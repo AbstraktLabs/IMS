@@ -20,6 +20,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  RotateCcw,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
@@ -805,14 +806,14 @@ export default function InventoryPage() {
 
     const payload = {
       name: form.name.trim(),
-      aliasName: form.alias.trim() || undefined,
-      manufacturer: form.brand.trim() || undefined,
-      categoryId: matchedCategory?.id,
-      hsnCode: form.hsnCode.trim() || undefined,
+      aliasName: form.alias.trim() || (editingItem ? null : undefined),
+      manufacturer: form.brand.trim() || (editingItem ? null : undefined),
+      categoryId: matchedCategory?.id ?? (editingItem ? null : undefined),
+      hsnCode: form.hsnCode.trim() || (editingItem ? null : undefined),
       unit: form.unit || undefined,
-      alternativeUnit: altUnit || undefined,
+      alternativeUnit: altUnit || (editingItem ? null : undefined),
       lowStockThreshold: n(form.minStockLevel),
-      description: form.description.trim() || undefined,
+      description: form.description.trim() || (editingItem ? null : undefined),
     };
 
     setSaving(true);
@@ -866,6 +867,23 @@ export default function InventoryPage() {
     } finally {
       setLoadingBatches(false);
     }
+  }
+
+  const isFiltered =
+    search !== "" ||
+    genericFilter !== "ALL" ||
+    categoryFilter !== "ALL" ||
+    stockFilter !== "ALL" ||
+    sortField !== "none";
+
+  function clearAllFilters() {
+    setSearch("");
+    setGenericFilter("ALL");
+    setCategoryFilter("ALL");
+    setStockFilter("ALL");
+    setSortField("none");
+    setSortDirection("asc");
+    setCurrentPage(1);
   }
 
   return (
@@ -1028,6 +1046,17 @@ export default function InventoryPage() {
           <option value="stockQuantity_desc">Sort: Stock (High → Low)</option>
           <option value="stockQuantity_asc">Sort: Stock (Low → High)</option>
         </select>
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-100 hover:bg-slate-200 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors shrink-0"
+            title="Reset all filters"
+          >
+            <RotateCcw className="h-3.5 w-3.5 text-slate-500" />
+            Reset
+          </button>
+        )}
       </div>
 
       {/* Table */}

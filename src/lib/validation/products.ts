@@ -2,14 +2,14 @@ import z from "zod";
 
 export const createProductSchema = z.object({
   name: z.string().min(1).max(255),
-  aliasName: z.string().max(255).optional(),
-  manufacturer: z.string().max(255).optional(),
-  categoryId: z.string().uuid().optional(),
-  hsnCode: z.string().max(20).optional(),
+  aliasName: z.string().max(255).nullable().optional(),
+  manufacturer: z.string().max(255).nullable().optional(),
+  categoryId: z.string().uuid().nullable().optional(),
+  hsnCode: z.string().max(20).nullable().optional(),
   unit: z.string().max(30).optional(), // defaults to "Pcs" at the DB level if omitted
-  alternativeUnit: z.string().max(30).optional(),
+  alternativeUnit: z.string().max(30).nullable().optional(),
   lowStockThreshold: z.number().int().nonnegative().optional(),
-  description: z.string().optional(),
+  description: z.string().nullable().optional(),
 });
 
 export const updateProductSchema = createProductSchema.partial();
