@@ -662,9 +662,14 @@ export default function InventoryPage() {
       if (typeof valA === "number" && typeof valB === "number") {
         return sortDirection === "asc" ? valA - valB : valB - valA;
       }
+      const strA = String(valA).trim();
+      const strB = String(valB).trim();
+      if (!strA && !strB) return 0;
+      if (!strA) return 1;
+      if (!strB) return -1;
       return sortDirection === "asc"
-        ? String(valA).localeCompare(String(valB))
-        : String(valB).localeCompare(String(valA));
+        ? strA.localeCompare(strB)
+        : strB.localeCompare(strA);
     });
   }, [filtered, sortField, sortDirection]);
 
