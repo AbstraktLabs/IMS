@@ -17,6 +17,9 @@ import {
   Boxes,
   ListFilter,
   FileText,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import { useAuth } from "@/context/auth-context";
@@ -541,7 +544,35 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [stockFilter, setStockFilter] = useState<"ALL" | StockLevel>("ALL");
   const [categoryFilter, setCategoryFilter] = useState<string>("ALL");
+  const [genericFilter, setGenericFilter] = useState<string>("ALL");
+  const [sortField, setSortField] = useState<"name" | "alias" | "category" | "stockQuantity" | "none">("none");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
+
+  function handleSort(field: "name" | "alias" | "category" | "stockQuantity") {
+    if (sortField === field) {
+      if (sortDirection === "asc") {
+        setSortDirection("desc");
+      } else {
+        setSortField("none");
+        setSortDirection("asc");
+      }
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  }
+
+  function renderSortIcon(field: "name" | "alias" | "category" | "stockQuantity") {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="w-3 h-3 text-[#044d73]" />
+    ) : (
+      <ArrowDown className="w-3 h-3 text-[#044d73]" />
+    );
+  }
   const ITEMS_PER_PAGE = 8;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -576,24 +607,65 @@ export default function InventoryPage() {
     [items],
   );
 
+  const genericNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of items) {
+      const a = item.alias?.trim();
+      if (a) set.add(a);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [items]);
+
   const filtered = useMemo(
     () =>
       items.filter((i) => {
-        const q = search.toLowerCase();
+        const q = search.toLowerCase().trim();
         const matchSearch =
+          !q ||
           i.name.toLowerCase().includes(q) ||
           (i.brand && i.brand.toLowerCase().includes(q)) ||
           (i.category && i.category.toLowerCase().includes(q)) ||
-          i.alias.toLowerCase().includes(q) ||
-          i.hsnCode.toLowerCase().includes(q);
+          (i.alias && i.alias.toLowerCase().includes(q)) ||
+          (i.hsnCode && i.hsnCode.toLowerCase().includes(q));
         const matchStock =
           stockFilter === "ALL" || getStockLevel(i) === stockFilter;
         const matchCategory =
           categoryFilter === "ALL" || i.category === categoryFilter;
-        return matchSearch && matchStock && matchCategory;
+        const matchGeneric =
+          genericFilter === "ALL" ||
+          (i.alias || "").trim().toLowerCase() === genericFilter.trim().toLowerCase();
+        return matchSearch && matchStock && matchCategory && matchGeneric;
       }),
-    [items, search, stockFilter, categoryFilter],
+    [items, search, stockFilter, categoryFilter, genericFilter],
   );
+
+  const sortedAndFiltered = useMemo(() => {
+    if (sortField === "none") return filtered;
+    return [...filtered].sort((a, b) => {
+      let valA: string | number = "";
+      let valB: string | number = "";
+      if (sortField === "name") {
+        valA = a.name.toLowerCase();
+        valB = b.name.toLowerCase();
+      } else if (sortField === "alias") {
+        valA = (a.alias || "").toLowerCase();
+        valB = (b.alias || "").toLowerCase();
+      } else if (sortField === "category") {
+        valA = (a.category ?? "").toLowerCase();
+        valB = (b.category ?? "").toLowerCase();
+      } else if (sortField === "stockQuantity") {
+        valA = a.stockQuantity;
+        valB = b.stockQuantity;
+      }
+
+      if (typeof valA === "number" && typeof valB === "number") {
+        return sortDirection === "asc" ? valA - valB : valB - valA;
+      }
+      return sortDirection === "asc"
+        ? String(valA).localeCompare(String(valB))
+        : String(valB).localeCompare(String(valA));
+    });
+  }, [filtered, sortField, sortDirection]);
 
   // Batch search inside the view modal — matches batch no, supplier,
   // expiry/mfg date, status label, and note text.
@@ -611,8 +683,8 @@ export default function InventoryPage() {
     );
   }, [viewingBatches, batchSearch]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-  const paginated = filtered.slice(
+  const totalPages = Math.max(1, Math.ceil(sortedAndFiltered.length / ITEMS_PER_PAGE));
+  const paginated = sortedAndFiltered.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
   );
@@ -890,6 +962,22 @@ export default function InventoryPage() {
           />
         </div>
         <select
+          value={genericFilter}
+          onChange={(e) => {
+            setGenericFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 focus:border-[#044d73] focus:outline-none max-w-[200px]"
+          title="Filter by Generic Name (Alias)"
+        >
+          <option value="ALL">All Generics (Alias)</option>
+          {genericNames.map((g) => (
+            <option key={g} value={g}>
+              {g}
+            </option>
+          ))}
+        </select>
+        <select
           value={categoryFilter}
           onChange={(e) => {
             setCategoryFilter(e.target.value);
@@ -917,6 +1005,29 @@ export default function InventoryPage() {
           <option value="low_stock">Low Stock</option>
           <option value="out_of_stock">Out of Stock</option>
         </select>
+        <select
+          value={sortField === "none" ? "none" : `${sortField}_${sortDirection}`}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "none") {
+              setSortField("none");
+            } else {
+              const [f, d] = val.split("_");
+              setSortField(f as "name" | "alias" | "category" | "stockQuantity");
+              setSortDirection(d as "asc" | "desc");
+            }
+          }}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 focus:border-[#044d73] focus:outline-none"
+          title="Sort Products"
+        >
+          <option value="none">Sort: Default</option>
+          <option value="alias_asc">Sort: Generic Name (A → Z)</option>
+          <option value="alias_desc">Sort: Generic Name (Z → A)</option>
+          <option value="name_asc">Sort: Brand / Item (A → Z)</option>
+          <option value="name_desc">Sort: Brand / Item (Z → A)</option>
+          <option value="stockQuantity_desc">Sort: Stock (High → Low)</option>
+          <option value="stockQuantity_asc">Sort: Stock (Low → High)</option>
+        </select>
       </div>
 
       {/* Table */}
@@ -925,11 +1036,44 @@ export default function InventoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-left text-xs font-semibold uppercase tracking-wider text-slate-400">
-                <th className="py-3 px-4">Item & Brand</th>
-                <th className="py-3 px-4">Category</th>
+                <th
+                  onClick={() => handleSort("name")}
+                  className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 select-none group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Item & Brand</span>
+                    {renderSortIcon("name")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("alias")}
+                  className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 select-none group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Alias</span>
+                    {renderSortIcon("alias")}
+                  </div>
+                </th>
+                <th
+                  onClick={() => handleSort("category")}
+                  className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 select-none group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Category</span>
+                    {renderSortIcon("category")}
+                  </div>
+                </th>
                 <th className="py-3 px-4">HSN Code</th>
                 <th className="py-3 px-4">Unit</th>
-                <th className="py-3 px-4">Total Stock</th>
+                <th
+                  onClick={() => handleSort("stockQuantity")}
+                  className="py-3 px-4 cursor-pointer hover:bg-slate-100/70 select-none group"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Total Stock</span>
+                    {renderSortIcon("stockQuantity")}
+                  </div>
+                </th>
                 <th className="py-3 px-4">Batches</th>
                 <th className="py-3 px-4">Threshold</th>
                 <th className="py-3 px-4">Status</th>
@@ -940,7 +1084,7 @@ export default function InventoryPage() {
               {loadingCatalog ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="py-16 text-center text-sm text-slate-400"
                   >
                     Loading inventory...
@@ -949,7 +1093,7 @@ export default function InventoryPage() {
               ) : paginated.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={10}
                     className="py-16 text-center text-sm text-slate-400"
                   >
                     No items match criteria.
@@ -970,19 +1114,21 @@ export default function InventoryPage() {
                           <span className="font-semibold text-slate-800 group-hover:text-[#044d73] transition-colors">
                             {item.name}
                           </span>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {item.brand && (
-                              <span className="inline-flex items-center text-[10px] font-bold text-[#044d73] bg-[#044d73]/10 px-1.5 py-0.2 rounded border border-[#044d73]/20">
-                                {item.brand}
-                              </span>
-                            )}
-                            {item.alias && (
-                              <span className="text-[11px] text-slate-400">
-                                {item.alias}
-                              </span>
-                            )}
-                          </div>
+                          {item.brand && (
+                            <span className="inline-flex items-center text-[10px] font-bold text-[#044d73] bg-[#044d73]/10 px-1.5 py-0.2 rounded border border-[#044d73]/20 w-fit mt-0.5">
+                              {item.brand}
+                            </span>
+                          )}
                         </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        {item.alias ? (
+                          <span className="inline-flex items-center text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            {item.alias}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300 text-xs">—</span>
+                        )}
                       </td>
                       <td className="py-3 px-4">
                         {item.category ? (
@@ -1200,7 +1346,7 @@ export default function InventoryPage() {
                           ? `Category: ${viewingItem.category} · `
                           : ""}
                         {viewingItem.alias
-                          ? `Alias: ${viewingItem.alias} · `
+                          ? `Generic: ${viewingItem.alias} · `
                           : ""}
                         HSN: {viewingItem.hsnCode || "—"} · Unit:{" "}
                         {viewingItem.unit}

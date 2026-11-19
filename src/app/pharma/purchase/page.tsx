@@ -515,7 +515,14 @@ function ItemPicker({
                         }`}
                     >
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold">{c.name}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="truncate text-xs font-semibold">{c.name}</p>
+                          {c.aliasName && (
+                            <span className="shrink-0 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                              {c.aliasName}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-[10px] text-slate-400 mt-0.5">
                           Stock: {c.stockQuantity} {c.unit}
                           {c.alternativeUnit && ` / ${c.alternativeUnit}`}
