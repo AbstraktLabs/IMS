@@ -707,26 +707,16 @@ export default function BatchesPage() {
         </div>
 
         {/* Expiry Status Filter: Expiry, Near Expiry, and Safe */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto">
-          {[
-            { id: "all", label: "All" },
-            { id: "expired", label: "Expired" },
-            { id: "near", label: "Near Expiry" },
-            { id: "ok", label: "Safe" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setStatusFilter(tab.id as StatusFilterOption)}
-              className={`px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${statusFilter === tab.id
-                ? "bg-white text-[#044d73] shadow-xs"
-                : "text-slate-600 hover:text-slate-900"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as StatusFilterOption)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-600 focus:border-[#044d73] focus:outline-none"
+        >
+          <option value="all">All</option>
+          <option value="expired">Expired</option>
+          <option value="near">Near Expiry</option>
+          <option value="ok">Safe</option>
+        </select>
       </div>
 
       {/* Table */}
