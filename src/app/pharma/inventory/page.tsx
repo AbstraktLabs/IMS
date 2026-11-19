@@ -1044,8 +1044,8 @@ export default function InventoryPage() {
           title="Sort Products"
         >
           <option value="none">Sort: Default</option>
-          <option value="alias_asc">Sort: Generic Name (A → Z)</option>
-          <option value="alias_desc">Sort: Generic Name (Z → A)</option>
+          <option value="alias_asc">Sort: Alias Name (A → Z)</option>
+          <option value="alias_desc">Sort: Alias Name (Z → A)</option>
           <option value="name_asc">Sort: Brand / Item (A → Z)</option>
           <option value="name_desc">Sort: Brand / Item (Z → A)</option>
           <option value="stockQuantity_desc">Sort: Stock (High → Low)</option>
